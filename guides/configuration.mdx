@@ -343,30 +343,28 @@ Customize the main header:
 st.header('📚 Ask me anything about your documents')
 ```
 
-## Complete Configuration Example
+## Current Configuration
 
-Here's a fully configured `.env` file:
+Currently, the `.env` file only requires:
 
 ```bash .env
-# OpenAI Configuration
+# Required: OpenAI Configuration
 OPENAI_API_KEY=sk-your-api-key-here
-
-# Vector Store Configuration
-VECTOR_DB_PATH=./data/vector_db
-
-# Processing Configuration (if implementing)
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=400
-
-# Model Configuration (if implementing)
-DEFAULT_MODEL=gpt-4-turbo
 ```
+
+<Note>
+This is the only environment variable currently used by RAG Chat. Other configuration options require code modification (see Advanced Configuration below).
+</Note>
 
 ## Advanced Configuration
 
+<Warning>
+The following customizations require modifying the source code in `app.py`. These are not built-in features but examples of how you can extend RAG Chat.
+</Warning>
+
 ### Using Environment Variables
 
-Modify the code to use environment variables:
+You can modify `app.py` to use environment variables for configuration:
 
 ```python
 import os
