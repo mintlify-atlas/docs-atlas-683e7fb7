@@ -1,0 +1,68 @@
+{
+  "projectType": "ai-ml",
+  "projectName": "RAG Chat",
+  "projectDescription": "A Retrieval-Augmented Generation chatbot built with Streamlit that allows users to upload documents and ask questions about their content using OpenAI's GPT models.",
+  "theme": "palm",
+  "primaryColor": "#10A37F",
+  "lightColor": "#19C37D",
+  "darkColor": "#0D8C6A",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Get Started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "installation"
+        ]
+      },
+      {
+        "group": "Core Concepts",
+        "pages": [
+          "concepts/rag-overview",
+          "concepts/vector-store",
+          "concepts/document-processing"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "guides/uploading-documents",
+          "guides/asking-questions",
+          "guides/model-selection",
+          "guides/configuration"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "reference/api",
+          "reference/environment-variables",
+          "reference/supported-formats"
+        ]
+      },
+      {
+        "group": "Advanced",
+        "pages": [
+          "advanced/customization",
+          "advanced/troubleshooting"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Upload and process PDF documents for question answering",
+    "RAG-based question answering using LangChain and ChromaDB",
+    "Multiple OpenAI GPT model support (GPT-3.5, GPT-4, GPT-4 Turbo, GPT-4o)",
+    "Persistent vector store for document embeddings",
+    "Interactive chat interface with Streamlit",
+    "Document chunking with configurable overlap",
+    "Context-aware responses with chat history"
+  ],
+  "publicApiSurface": [
+    "load_existing_vector_store() - Load existing ChromaDB vector store",
+    "process_file(file) - Process uploaded PDF files into document chunks",
+    "add_to_vector_store(documents, vector_store) - Add documents to vector store",
+    "ask_question(model, query, vector_store) - Query the RAG system with a question"
+  ]
+}
