@@ -1,0 +1,174 @@
+---
+title: 'Uploading Documents'
+description: 'Learn how to upload and process PDF documents in RAG Chat'
+icon: 'file-pdf'
+---
+
+## Overview
+
+RAG Chat allows you to upload PDF documents that will be processed, chunked, and stored in a vector database for intelligent question answering. This guide walks you through the upload process and best practices.
+
+## Upload Interface
+
+The file upload interface is located in the sidebar of the RAG Chat application:
+
+```python app.py
+with st.sidebar:
+    st.header('Upload de arquivos')
+    uploaded_files = st.file_uploader(
+        label='Faça aqui o upload dos seus arquivos: ',
+        accept_multiple_files=True,
+        type='pdf',
+    )
+```
+
+<Note>
+  You can upload multiple PDF files at once. All files will be processed and added to the same vector store.
+</Note>
+
+## How Document Processing Works
+
+<Steps>
+  <Step title="File Upload">
+    Select one or more PDF files using the file uploader in the sidebar.
+  </Step>
+  
+  <Step title="PDF Loading">
+    Each file is processed using PyPDFLoader, which extracts text from all pages:
+    
+    ```python app.py
+    def process_file(file):
+        with NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+            temp_file.write(file.read())
+            temp_file_path = temp_file.name
+            loader = PyPDFLoader(temp_file_path)
+            docs = loader.load()
+    ```
+  </Step>
+  
+  <Step title="Text Chunking">
+    The extracted text is split into manageable chunks for better retrieval:
+    
+    ```python app.py
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size = 1000,
+        chunk_overlap = 400
+    )
+    chunks = text_splitter.split_documents(docs)
+    ```
+    
+    - **chunk_size**: 1000 characters per chunk
+    - **chunk_overlap**: 400 characters overlap between chunks to preserve context
+  </Step>
+  
+  <Step title="Vector Store Creation">
+    Chunks are embedded and stored in a Chroma vector database:
+    
+    ```python app.py
+    def add_to_vector_store(documents, vector_store = None):
+        if vector_store:
+            vector_store.add_documents(documents)
+        else:
+            vector_store = Chroma.from_documents(
+                documents=documents,
+                embedding=OpenAIEmbeddings(),
+                persist_directory=persistant_directory
+            )
+        return vector_store
+    ```
+  </Step>
+</Steps>
+
+## Processing Flow
+
+When you upload files, the system processes them automatically:
+
+```python app.py
+with st.spinner('Carregando arquivos...'):
+    all_chunks = []
+    for uploaded_file in uploaded_files:
+        chunks = process_file(uploaded_file)
+        all_chunks.extend(chunks)
+
+    if all_chunks:
+        vector_store = add_to_vector_store(
+            vector_store = vector_store,
+            documents = all_chunks
+        )
+```
+
+## Best Practices
+
+<Tip>
+  **Optimal Document Types:**
+  - Technical documentation
+  - Research papers
+  - Reports and white papers
+  - Books and manuals
+  - Any text-heavy PDF content
+</Tip>
+
+<Warning>
+  **Avoid:**
+  - Image-only PDFs (without OCR)
+  - Heavily formatted documents with complex layouts
+  - Password-protected PDFs
+  - Scanned documents without text layer
+</Warning>
+
+### Tips for Best Results
+
+1. **Multiple Related Documents**: Upload documents on related topics together for better context understanding
+
+2. **Clean PDFs**: Use PDFs with clear text extraction (not scanned images)
+
+3. **Reasonable Size**: While there's no strict limit, extremely large documents may take longer to process
+
+4. **Incremental Uploads**: You can upload additional documents at any time - they'll be added to the existing vector store
+
+## Persistent Storage
+
+Documents are stored persistently in the `db` directory:
+
+```python app.py
+persistant_directory = 'db'
+
+def load_existing_vector_store():
+    if os.path.exists(persistant_directory):
+        vector_store = Chroma(
+            persist_directory=persistant_directory,
+            embedding_function=OpenAIEmbeddings()
+        )
+        return vector_store
+    return None
+```
+
+<Note>
+  Once uploaded, documents persist across sessions. You don't need to re-upload them every time you restart the application.
+</Note>
+
+## Troubleshooting
+
+### Upload Not Working
+
+- Ensure the file is a valid PDF
+- Check that the PDF is not password-protected
+- Verify you have sufficient disk space
+
+### Slow Processing
+
+- Large PDFs take longer to process
+- The spinner shows "Carregando arquivos..." during processing
+- Wait for the process to complete before asking questions
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Asking Questions" icon="messages-question" href="/guides/asking-questions">
+    Learn how to ask questions about your uploaded documents
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Customize chunk size and other processing parameters
+  </Card>
+</CardGroup>

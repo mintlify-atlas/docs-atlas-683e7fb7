@@ -1,0 +1,293 @@
+---
+title: 'Model Selection'
+description: 'Choose the right GPT model for your use case'
+icon: 'microchip'
+---
+
+## Overview
+
+RAG Chat supports multiple OpenAI GPT models, each with different capabilities, speeds, and costs. Choose the model that best fits your requirements.
+
+## Available Models
+
+The model selector is located in the sidebar:
+
+```python app.py
+model_options = [
+    'gpt-3.5-turbo',
+    'gpt-4',
+    'gpt-4-turbo',
+    'gpt-4o-mini',
+    'gpt-4o',
+]
+selected_model = st.selectbox(
+    label='Informe o llm que deseja:',
+    options=model_options
+)
+```
+
+## Model Comparison
+
+<CardGroup cols={2}>
+  <Card title="GPT-3.5 Turbo" icon="bolt">
+    **Best for**: Fast responses, simple queries, high volume
+    
+    Fast and cost-effective option for straightforward questions
+  </Card>
+  
+  <Card title="GPT-4" icon="brain">
+    **Best for**: Complex analysis, detailed reasoning
+    
+    Most capable model with superior reasoning abilities
+  </Card>
+  
+  <Card title="GPT-4 Turbo" icon="rocket">
+    **Best for**: Balance of speed and capability
+    
+    Faster than GPT-4 with similar performance
+  </Card>
+  
+  <Card title="GPT-4o" icon="star">
+    **Best for**: Latest features and optimizations
+    
+    Newest optimized model with enhanced capabilities
+  </Card>
+  
+  <Card title="GPT-4o Mini" icon="gauge-high">
+    **Best for**: Cost-conscious applications
+    
+    Smaller, faster, cheaper variant of GPT-4o
+  </Card>
+</CardGroup>
+
+## Detailed Model Characteristics
+
+### GPT-3.5 Turbo
+
+<Tabs>
+  <Tab title="Strengths">
+    - ⚡ **Fastest response time**
+    - 💰 **Lowest cost per request**
+    - 📊 **Good for straightforward questions**
+    - 🔄 **High throughput capability**
+  </Tab>
+  
+  <Tab title="Limitations">
+    - Less nuanced understanding
+    - May miss subtle context
+    - Simpler reasoning capabilities
+    - Limited for complex analysis
+  </Tab>
+  
+  <Tab title="Use Cases">
+    - Quick fact retrieval
+    - Simple document queries
+    - High-volume applications
+    - Cost-sensitive deployments
+  </Tab>
+</Tabs>
+
+### GPT-4
+
+<Tabs>
+  <Tab title="Strengths">
+    - 🧠 **Superior reasoning**
+    - 🎯 **Excellent accuracy**
+    - 📖 **Better context understanding**
+    - 🔍 **Complex query handling**
+  </Tab>
+  
+  <Tab title="Limitations">
+    - Slower response time
+    - Higher cost per request
+    - May be overkill for simple queries
+  </Tab>
+  
+  <Tab title="Use Cases">
+    - Complex document analysis
+    - Technical paper review
+    - Detailed reasoning tasks
+    - Critical applications requiring accuracy
+  </Tab>
+</Tabs>
+
+### GPT-4 Turbo
+
+<Tabs>
+  <Tab title="Strengths">
+    - ⚡ **Faster than GPT-4**
+    - 🧠 **Near GPT-4 quality**
+    - 💰 **Lower cost than GPT-4**
+    - 🎯 **Great balance**
+  </Tab>
+  
+  <Tab title="Limitations">
+    - Still more expensive than GPT-3.5
+    - Slightly slower than GPT-3.5
+  </Tab>
+  
+  <Tab title="Use Cases">
+    - Production applications
+    - Balance of speed and quality
+    - Most general use cases
+    - Default recommendation for most users
+  </Tab>
+</Tabs>
+
+### GPT-4o (Optimized)
+
+<Tabs>
+  <Tab title="Strengths">
+    - 🚀 **Latest model**
+    - ⚡ **Optimized performance**
+    - 🎯 **Enhanced capabilities**
+    - 📊 **Better efficiency**
+  </Tab>
+  
+  <Tab title="Limitations">
+    - Newer model (less established)
+    - Pricing may vary
+  </Tab>
+  
+  <Tab title="Use Cases">
+    - Cutting-edge applications
+    - Users wanting latest features
+    - Performance-critical deployments
+  </Tab>
+</Tabs>
+
+### GPT-4o Mini
+
+<Tabs>
+  <Tab title="Strengths">
+    - 💰 **Very cost-effective**
+    - ⚡ **Fast responses**
+    - 🎯 **Better than GPT-3.5**
+    - 📊 **Good balance for most tasks**
+  </Tab>
+  
+  <Tab title="Limitations">
+    - Less capable than full GPT-4o
+    - Smaller context window
+  </Tab>
+  
+  <Tab title="Use Cases">
+    - Cost-conscious deployments
+    - Good general-purpose choice
+    - High-volume applications
+    - Development and testing
+  </Tab>
+</Tabs>
+
+## Speed vs. Accuracy Tradeoffs
+
+```mermaid
+graph LR
+    A[GPT-3.5 Turbo] -->|Faster| B[GPT-4o Mini]
+    B -->|Faster| C[GPT-4 Turbo]
+    C -->|Faster| D[GPT-4]
+    D -->|Faster| E[GPT-4o]
+    
+    A -.->|Less Accurate| B
+    B -.->|Less Accurate| C
+    C -.->|Less Accurate| D
+    D -.->|Less Accurate| E
+```
+
+<Note>
+  There's typically a tradeoff between speed and quality. Faster models are generally less expensive but may produce less nuanced responses.
+</Note>
+
+## Cost Considerations
+
+### Relative Cost Comparison
+
+| Model | Relative Cost | Speed | Quality |
+|-------|---------------|-------|--------|
+| GPT-3.5 Turbo | $ | ⚡⚡⚡⚡⚡ | ⭐⭐⭐ |
+| GPT-4o Mini | $$ | ⚡⚡⚡⚡ | ⭐⭐⭐⭐ |
+| GPT-4 Turbo | $$$ | ⚡⚡⚡ | ⭐⭐⭐⭐⭐ |
+| GPT-4 | $$$$ | ⚡⚡ | ⭐⭐⭐⭐⭐ |
+| GPT-4o | $$$ | ⚡⚡⚡ | ⭐⭐⭐⭐⭐ |
+
+<Warning>
+  Actual costs vary based on OpenAI's current pricing. Check [OpenAI's pricing page](https://openai.com/pricing) for current rates.
+</Warning>
+
+## Recommendation Guide
+
+### Choose GPT-3.5 Turbo If:
+
+- You need fast responses
+- You're working with simple questions
+- Cost is a primary concern
+- You have high query volume
+
+### Choose GPT-4o Mini If:
+
+- You want better quality than GPT-3.5
+- Cost efficiency is important
+- You need good general-purpose performance
+- You're in development/testing phase
+
+### Choose GPT-4 Turbo If:
+
+- You need production-grade quality
+- You want a balanced option
+- Your queries are moderately complex
+- This is the recommended default for most users
+
+### Choose GPT-4 If:
+
+- You need maximum accuracy
+- You're analyzing complex technical content
+- Quality is more important than speed
+- You're working with critical applications
+
+### Choose GPT-4o If:
+
+- You want the latest model
+- You need optimized performance
+- You want cutting-edge capabilities
+- Speed and quality are both important
+
+## Changing Models
+
+You can change the selected model at any time using the sidebar dropdown:
+
+```python app.py
+response = ask_question(
+    model = selected_model,  # Uses the currently selected model
+    query = question,
+    vector_store = vector_store
+)
+```
+
+<Tip>
+  Try different models with the same question to compare responses and find the best fit for your use case.
+</Tip>
+
+## How Models Are Used
+
+The selected model is passed to ChatOpenAI:
+
+```python app.py
+def ask_question(model, query, vector_store):
+    llm = ChatOpenAI(model = model)
+    retriever = vector_store.as_retriever()
+    # ... rest of the function
+```
+
+This creates an instance of the LLM with your selected model for each question.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Asking Questions" icon="messages-question" href="/guides/asking-questions">
+    Learn how to ask effective questions
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Configure API keys and other settings
+  </Card>
+</CardGroup>

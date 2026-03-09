@@ -1,0 +1,413 @@
+---
+title: Advanced Customization
+description: Learn how to customize RAG Chat for your specific needs
+icon: sliders
+---
+
+# Advanced Customization
+
+RAG Chat is highly customizable. This guide covers advanced customization options to tailor the application to your specific requirements.
+
+## System Prompt Customization
+
+The system prompt controls how the AI responds to user queries. You can customize it to change the response language, format, and behavior.
+
+### Default System Prompt
+
+The current system prompt is located in `app.py:59-66`:
+
+```python
+system_prompt = '''
+Use o contexto para responder as perguntas.
+Se não encontrar uma resposta no contexto,
+explique que não há informações disponíveis.
+Responda em formato de markdown e com visualizações
+elaboradas e interativas.
+Contexto: {context}
+'''
+```
+
+### Customizing the System Prompt
+
+To customize the system prompt for different use cases:
+
+<CodeGroup>
+
+```python English Version
+# app.py - line 59
+system_prompt = '''
+Use the provided context to answer questions.
+If you cannot find an answer in the context,
+explain that the information is not available.
+Respond in markdown format with detailed and interactive visualizations.
+Context: {context}
+'''
+```
+
+```python Technical Documentation
+# app.py - line 59
+system_prompt = '''
+You are a technical documentation assistant.
+Use the context to provide accurate, detailed technical answers.
+Include code examples when relevant.
+If information is not in the context, clearly state this.
+Always cite specific sections when possible.
+Context: {context}
+'''
+```
+
+```python Customer Support
+# app.py - line 59
+system_prompt = '''
+You are a helpful customer support assistant.
+Use the context to provide friendly, clear answers.
+If you cannot find the answer in the context, offer to escalate to a human agent.
+Always maintain a professional and empathetic tone.
+Context: {context}
+'''
+```
+
+</CodeGroup>
+
+<Note>
+The `{context}` placeholder is required - it's where the retrieved document chunks are injected by LangChain.
+</Note>
+
+## Chunk Size and Overlap Tuning
+
+The chunking parameters significantly impact retrieval quality and response accuracy.
+
+### Current Configuration
+
+The default settings are in `app.py:33-36`:
+
+```python
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 1000,
+    chunk_overlap = 400
+)
+```
+
+### Optimization Guidelines
+
+<Accordion title="Chunk Size (default: 1000)">
+
+**When to increase:**
+- Documents with long, complex explanations
+- Technical documentation requiring full context
+- Legal or academic documents
+
+**When to decrease:**
+- Short FAQ-style content
+- Lists and tabular data
+- When you need more precise retrieval
+
+**Example configurations:**
+
+```python
+# For technical documentation (larger chunks)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 2000,
+    chunk_overlap = 500
+)
+
+# For FAQ or short content (smaller chunks)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 500,
+    chunk_overlap = 100
+)
+```
+
+</Accordion>
+
+<Accordion title="Chunk Overlap (default: 400)">
+
+**Purpose:** Ensures context continuity between chunks
+
+**Recommended ratio:** 20-40% of chunk_size
+
+**Example:**
+```python
+# High overlap for narrative content
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 1000,
+    chunk_overlap = 400  # 40% overlap
+)
+
+# Low overlap for independent sections
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 1500,
+    chunk_overlap = 300  # 20% overlap
+)
+```
+
+</Accordion>
+
+<Warning>
+Increasing chunk size increases token usage per query. Monitor your OpenAI API costs when making changes.
+</Warning>
+
+## Adding New Model Options
+
+RAG Chat supports multiple OpenAI models. You can add or remove models from the selection.
+
+### Current Model List
+
+The model options are defined in `app.py:104-110`:
+
+```python
+model_options = [
+    'gpt-3.5-turbo',
+    'gpt-4',
+    'gpt-4-turbo',
+    'gpt-4o-mini',
+    'gpt-4o',
+]
+```
+
+### Adding New Models
+
+```python
+# app.py - line 104
+model_options = [
+    'gpt-3.5-turbo',
+    'gpt-4',
+    'gpt-4-turbo',
+    'gpt-4o-mini',
+    'gpt-4o',
+    'gpt-4o-2024-08-06',  # Latest GPT-4o version
+    'o1-mini',             # Reasoning model
+    'o1-preview',          # Advanced reasoning
+]
+```
+
+<Note>
+Ensure your OpenAI API key has access to the models you add. Some models require special access.
+</Note>
+
+### Setting a Default Model
+
+To set a default model instead of the first option:
+
+```python
+# app.py - line 111
+selected_model = st.selectbox(
+    label='Informe o llm que deseja:',
+    options=model_options,
+    index=4  # Sets 'gpt-4o' as default (0-indexed)
+)
+```
+
+## Session State Management
+
+RAG Chat uses Streamlit's session state to maintain conversation history.
+
+### Current Implementation
+
+Session state is initialized in `app.py:129-130`:
+
+```python
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+```
+
+Messages are stored as dictionaries with `role` and `content` keys:
+
+```python
+# app.py:139 - User message
+st.session_state.messages.append({'role':'user', 'content': question})
+
+# app.py:147 - AI response
+st.session_state.messages.append({'role':'ai', 'content':response})
+```
+
+### Adding Conversation Limits
+
+Limit conversation history to prevent context overflow:
+
+```python
+# Add after line 139 in app.py
+st.session_state.messages.append({'role':'user', 'content': question})
+
+# Keep only last 10 messages (5 exchanges)
+if len(st.session_state.messages) > 10:
+    st.session_state.messages = st.session_state.messages[-10:]
+```
+
+### Adding a Clear Chat Button
+
+```python
+# Add in sidebar after model selection (app.py:115)
+if st.button('Clear Chat History'):
+    st.session_state.messages = []
+    st.rerun()
+```
+
+### Persisting Conversation History
+
+Save conversation to a JSON file:
+
+```python
+import json
+from datetime import datetime
+
+# Add to sidebar
+if st.button('Save Conversation'):
+    filename = f"conversation_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(st.session_state.messages, f, ensure_ascii=False, indent=2)
+    st.success(f'Conversation saved to {filename}')
+```
+
+## Streamlit UI Customization
+
+### Page Configuration
+
+The current page configuration is in `app.py:88-91`:
+
+```python
+st.set_page_config(
+    page_title='RAG Chat',
+    page_icon='🤖'
+)
+```
+
+### Advanced Page Configuration
+
+```python
+# app.py - line 88
+st.set_page_config(
+    page_title='RAG Chat - AI Document Assistant',
+    page_icon='🤖',
+    layout='wide',  # Use full width
+    initial_sidebar_state='expanded',  # Sidebar open by default
+    menu_items={
+        'Get Help': 'https://github.com/yourusername/rag-chat',
+        'Report a bug': 'https://github.com/yourusername/rag-chat/issues',
+        'About': 'RAG Chat v1.0 - AI-powered document Q&A'
+    }
+)
+```
+
+### Custom Header and Styling
+
+Replace the simple header in `app.py:93`:
+
+```python
+# Simple version (current)
+st.header('🤖 Como posso te ajudar hoje?')
+
+# Enhanced version with custom styling
+st.markdown("""
+    <h1 style='text-align: center; color: #4A90E2;'>
+        🤖 RAG Chat Assistant
+    </h1>
+    <p style='text-align: center; color: #666;'>
+        Upload your documents and ask questions
+    </p>
+    """, unsafe_allow_html=True)
+```
+
+### Custom Sidebar
+
+```python
+# app.py - line 95 (enhance the sidebar)
+with st.sidebar:
+    st.markdown("### 📁 Document Upload")
+    
+    uploaded_files = st.file_uploader(
+        label='Upload your PDF files:',
+        accept_multiple_files=True,
+        type='pdf',
+        help='Upload one or more PDF documents to chat with'
+    )
+    
+    st.markdown("---")  # Divider
+    st.markdown("### 🤖 Model Selection")
+    
+    selected_model = st.selectbox(
+        label='Choose AI Model:',
+        options=model_options,
+        help='Select the OpenAI model for responses'
+    )
+    
+    # Add statistics
+    st.markdown("---")
+    st.markdown("### 📊 Statistics")
+    if vector_store:
+        st.metric("Documents Loaded", "✓")
+    st.metric("Messages", len(st.session_state.get('messages', [])))
+```
+
+### Custom Theme
+
+Create a `.streamlit/config.toml` file in your project root:
+
+```toml
+[theme]
+primaryColor = "#4A90E2"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"
+font = "sans serif"
+
+[server]
+maxUploadSize = 200
+```
+
+## Advanced Features
+
+### Adding Source Citations
+
+Modify the retrieval to include source metadata:
+
+```python
+# Replace the ask_question function (app.py:55)
+def ask_question(model, query, vector_store):
+    llm = ChatOpenAI(model=model)
+    retriever = vector_store.as_retriever(
+        search_kwargs={"k": 4}  # Return top 4 chunks
+    )
+    
+    # Retrieve documents with metadata
+    docs = retriever.get_relevant_documents(query)
+    
+    # Format context with sources
+    context_with_sources = "\n\n".join([
+        f"[Source {i+1}] {doc.page_content}"
+        for i, doc in enumerate(docs)
+    ])
+    
+    system_prompt = '''
+    Use the provided context to answer questions.
+    Include source numbers [Source N] in your response.
+    Context: {context}
+    '''
+    
+    # Continue with existing chain logic...
+```
+
+### Multi-Language Support
+
+Detect and adapt to user language:
+
+```python
+from langdetect import detect
+
+def get_system_prompt(user_query):
+    try:
+        lang = detect(user_query)
+        if lang == 'en':
+            return "Answer in English using the context..."
+        elif lang == 'pt':
+            return "Responda em português usando o contexto..."
+        elif lang == 'es':
+            return "Responde en español usando el contexto..."
+    except:
+        pass
+    return "Use the context to answer..."  # Default
+```
+
+<Note>
+This requires adding `langdetect` to your `requirements.txt`
+</Note>

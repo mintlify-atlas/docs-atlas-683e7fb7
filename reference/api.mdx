@@ -1,0 +1,244 @@
+---
+title: 'API Reference'
+description: 'Complete API reference for all RAG Chat functions'
+icon: 'code'
+---
+
+## Overview
+
+RAG Chat provides four core functions for managing document processing, vector storage, and question answering. All functions are designed to work seamlessly with LangChain and OpenAI embeddings.
+
+---
+
+## load_existing_vector_store()
+
+Loads an existing Chroma vector store from the persistent directory.
+
+### Signature
+
+```python
+def load_existing_vector_store()
+```
+
+### Returns
+
+<ResponseField name="vector_store" type="Chroma | None">
+  Returns a Chroma vector store instance if the persistent directory exists, otherwise returns `None`.
+</ResponseField>
+
+### Behavior
+
+- Checks if the `db` directory exists in the project root
+- If found, initializes a Chroma vector store with OpenAI embeddings
+- Uses the same embedding function as document ingestion for consistency
+
+### Example
+
+```python
+from app import load_existing_vector_store
+
+# Load existing vector store on app startup
+vector_store = load_existing_vector_store()
+
+if vector_store:
+    print("Vector store loaded successfully")
+else:
+    print("No existing vector store found")
+```
+
+### Source Reference
+
+Defined in `app.py:16-23`
+
+---
+
+## process_file(file)
+
+Processes a PDF file and splits it into document chunks suitable for vector storage.
+
+### Signature
+
+```python
+def process_file(file)
+```
+
+### Parameters
+
+<ParamField path="file" type="UploadedFile" required>
+  A file object from Streamlit's file uploader. Must be a PDF file.
+</ParamField>
+
+### Returns
+
+<ResponseField name="chunks" type="list[Document]">
+  A list of LangChain Document objects, split into chunks with overlap for better context preservation.
+</ResponseField>
+
+### Processing Details
+
+1. **Temporary File Creation**: Creates a temporary file with `.pdf` suffix
+2. **PDF Loading**: Uses PyPDFLoader to extract text from all pages
+3. **Text Splitting**: Applies RecursiveCharacterTextSplitter with:
+   - `chunk_size`: 1000 characters
+   - `chunk_overlap`: 400 characters (40% overlap for context preservation)
+4. **Cleanup**: Automatically removes the temporary file after processing
+
+### Example
+
+```python
+from app import process_file
+
+# In a Streamlit app
+uploaded_file = st.file_uploader("Upload PDF", type="pdf")
+
+if uploaded_file:
+    chunks = process_file(uploaded_file)
+    print(f"Processed {len(chunks)} document chunks")
+```
+
+### Source Reference
+
+Defined in `app.py:26-40`
+
+---
+
+## add_to_vector_store(documents, vector_store=None)
+
+Adds document chunks to an existing vector store or creates a new one.
+
+### Signature
+
+```python
+def add_to_vector_store(documents, vector_store=None)
+```
+
+### Parameters
+
+<ParamField path="documents" type="list[Document]" required>
+  A list of LangChain Document objects to add to the vector store. Typically output from `process_file()`.
+</ParamField>
+
+<ParamField path="vector_store" type="Chroma" default="None">
+  An existing Chroma vector store instance. If `None`, a new vector store will be created.
+</ParamField>
+
+### Returns
+
+<ResponseField name="vector_store" type="Chroma">
+  The updated or newly created Chroma vector store instance.
+</ResponseField>
+
+### Behavior
+
+- **If `vector_store` is provided**: Adds documents to the existing store using `add_documents()`
+- **If `vector_store` is `None`**: Creates a new Chroma vector store with:
+  - OpenAI embeddings
+  - Persistent storage in the `db` directory
+
+### Example
+
+```python
+from app import load_existing_vector_store, process_file, add_to_vector_store
+
+# Load existing store or start fresh
+vector_store = load_existing_vector_store()
+
+# Process and add new documents
+for uploaded_file in uploaded_files:
+    chunks = process_file(uploaded_file)
+    vector_store = add_to_vector_store(chunks, vector_store)
+
+print("All documents added to vector store")
+```
+
+### Source Reference
+
+Defined in `app.py:43-52`
+
+---
+
+## ask_question(model, query, vector_store)
+
+Processes a user question using RAG (Retrieval-Augmented Generation) with conversation history.
+
+### Signature
+
+```python
+def ask_question(model, query, vector_store)
+```
+
+### Parameters
+
+<ParamField path="model" type="str" required>
+  The OpenAI model identifier to use for generating responses. Supported models:
+  - `gpt-3.5-turbo`
+  - `gpt-4`
+  - `gpt-4-turbo`
+  - `gpt-4o-mini`
+  - `gpt-4o`
+</ParamField>
+
+<ParamField path="query" type="str" required>
+  The user's question or prompt.
+</ParamField>
+
+<ParamField path="vector_store" type="Chroma" required>
+  A Chroma vector store instance containing the document embeddings for retrieval.
+</ParamField>
+
+### Returns
+
+<ResponseField name="response" type="str">
+  The AI-generated response in markdown format, based on retrieved context and conversation history.
+</ResponseField>
+
+### RAG Pipeline
+
+1. **LLM Initialization**: Creates a ChatOpenAI instance with the specified model
+2. **Retriever Setup**: Converts vector store to a retriever for semantic search
+3. **Prompt Construction**:
+   - System prompt instructs the model to answer based on context
+   - Includes full conversation history from `st.session_state.messages`
+   - Responses are formatted in markdown with interactive visualizations
+4. **Chain Execution**:
+   - Retrieves relevant document chunks
+   - Passes context and query to the LLM
+   - Returns formatted response
+
+### System Prompt Behavior
+
+The function uses a Portuguese system prompt that:
+- Instructs the model to use retrieved context for answers
+- Asks for explanations when information is not available
+- Requests markdown formatting with interactive visualizations
+
+### Example
+
+```python
+from app import ask_question
+
+# Assuming vector_store exists and st.session_state.messages is initialized
+response = ask_question(
+    model="gpt-4o-mini",
+    query="What are the main findings in the uploaded documents?",
+    vector_store=vector_store
+)
+
+print(response)  # Markdown-formatted answer
+```
+
+### Source Reference
+
+Defined in `app.py:55-82`
+
+---
+
+## Notes
+
+<Note>
+  All functions require the `OPENAI_API_KEY` environment variable to be set. See [Environment Variables](/reference/environment-variables) for setup instructions.
+</Note>
+
+<Warning>
+  The `process_file()` function only supports PDF files. Other file formats will cause errors. See [Supported Formats](/reference/supported-formats) for details.
+</Warning>

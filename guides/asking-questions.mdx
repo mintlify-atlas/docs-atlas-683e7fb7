@@ -1,0 +1,248 @@
+---
+title: 'Asking Questions'
+description: 'Learn how to effectively ask questions and interpret AI responses'
+icon: 'messages-question'
+---
+
+## Overview
+
+Once you've uploaded documents, you can ask questions about their content. RAG Chat uses your documents as context to provide accurate, grounded answers.
+
+## The Chat Interface
+
+The main chat interface appears in the center of the application:
+
+```python app.py
+question = st.chat_input(placeholder='Digite aqui sua pergunta...')
+```
+
+<Note>
+  You must upload at least one document before you can ask questions. The chat input only becomes active when documents are loaded.
+</Note>
+
+## How Question Answering Works
+
+<Steps>
+  <Step title="Ask Your Question">
+    Type your question in the chat input box at the bottom of the screen.
+  </Step>
+  
+  <Step title="Context Retrieval">
+    The system searches the vector store for relevant document chunks:
+    
+    ```python app.py
+    def ask_question(model, query, vector_store):
+        llm = ChatOpenAI(model = model)
+        retriever = vector_store.as_retriever()
+    ```
+    
+    The retriever finds the most semantically similar chunks to your question.
+  </Step>
+  
+  <Step title="Response Generation">
+    The AI generates a response using the retrieved context:
+    
+    ```python app.py
+    chain = (
+        {
+            'context': retriever,
+            'input': RunnablePassthrough()
+        }
+        | prompt
+        | llm
+    )
+    response = chain.invoke(query)
+    ```
+  </Step>
+  
+  <Step title="Display Answer">
+    The response is displayed in the chat interface with markdown formatting.
+  </Step>
+</Steps>
+
+## System Prompt
+
+RAG Chat uses a specific system prompt to guide AI responses:
+
+```python app.py
+system_prompt = '''
+Use o contexto para responder as perguntas.
+Se não encontrar uma resposta no contexto,
+explique que não há informações disponíveis.
+Responda em formato de markdown e com visualizações
+elaboradas e interativas.
+Contexto: {context}
+'''
+```
+
+<Tip>
+  The system is instructed to:
+  - Only answer based on the provided context
+  - Admit when information is not available
+  - Format responses in markdown
+  - Provide elaborate and interactive visualizations
+</Tip>
+
+## Conversation History
+
+RAG Chat maintains conversation history throughout your session:
+
+```python app.py
+if 'messages' not in st.session_state:
+    st.session_state.messages = []
+
+# Messages are preserved across interactions
+messages = [('system', system_prompt)]
+for message in st.session_state.messages:
+    messages.append((message.get('role'), message.get('content')))
+```
+
+This allows for follow-up questions and contextual conversations.
+
+## Example Questions
+
+### Factual Questions
+
+```
+What are the main findings in this research paper?
+```
+
+```
+How does the proposed algorithm work?
+```
+
+### Comparative Questions
+
+```
+What are the differences between approach A and approach B?
+```
+
+```
+Compare the results from chapters 3 and 5.
+```
+
+### Analytical Questions
+
+```
+What are the limitations mentioned in the study?
+```
+
+```
+Summarize the key takeaways from this document.
+```
+
+### Follow-up Questions
+
+```
+Can you explain that in more detail?
+```
+
+```
+What are some examples of this concept?
+```
+
+## Understanding Responses
+
+### Markdown Formatting
+
+Responses are rendered with full markdown support:
+
+- **Bold** and *italic* text
+- Bullet points and numbered lists
+- Code blocks
+- Tables
+- Headings
+
+### Grounded Answers
+
+<Note>
+  If the AI cannot find relevant information in your documents, it will explicitly state that the information is not available rather than making up an answer.
+</Note>
+
+### Context-Based Responses
+
+All answers are based on the content of your uploaded documents. The AI:
+
+- ✅ Uses only information from your documents
+- ✅ Cites specific details from the context
+- ✅ Admits when information is unavailable
+- ❌ Does not use external knowledge
+- ❌ Does not make assumptions beyond the document content
+
+## Chat Workflow
+
+```python app.py
+if vector_store and question:
+    # Display conversation history
+    for message in st.session_state.messages:
+        st.chat_message(message.get('role')).write(message.get('content'))
+
+    # Display user question
+    st.chat_message('user').write(question)
+    st.session_state.messages.append({'role':'user', 'content': question})
+    
+    # Generate and display AI response
+    with st.spinner('Buscando resposta...'):
+        response = ask_question(
+            model = selected_model,
+            query = question,
+            vector_store = vector_store
+        )
+        st.chat_message('ai').write(response)
+        st.session_state.messages.append({'role':'ai', 'content':response})
+```
+
+## Best Practices
+
+### Effective Question Strategies
+
+<Tip>
+  **Be Specific**: Instead of "Tell me about the document," ask "What methodology was used in the experiment?"
+</Tip>
+
+<Tip>
+  **Use Context**: Reference specific topics or sections: "What does the author say about machine learning in chapter 3?"
+</Tip>
+
+<Tip>
+  **Ask Follow-ups**: The conversation history allows you to build on previous answers
+</Tip>
+
+### What to Expect
+
+1. **Relevant Context**: The retriever finds the most relevant chunks from your documents
+2. **Synthesized Answers**: The AI synthesizes information from multiple chunks if needed
+3. **Honest Limitations**: If information isn't in your documents, the AI will tell you
+4. **Rich Formatting**: Responses use markdown for better readability
+
+## Troubleshooting
+
+### No Response Generated
+
+- Ensure documents are uploaded (check for "Carregando arquivos..." completion)
+- Verify your OpenAI API key is configured
+- Check that you've selected a model
+
+### Irrelevant Answers
+
+- Try rephrasing your question more specifically
+- Ensure your documents contain information about the topic
+- Consider uploading additional relevant documents
+
+### "Information Not Available" Responses
+
+- This means your question can't be answered from the uploaded documents
+- Try uploading documents that contain the relevant information
+- Rephrase your question to align with document content
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Model Selection" icon="microchip" href="/guides/model-selection">
+    Choose the right GPT model for your needs
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Customize system prompts and other settings
+  </Card>
+</CardGroup>

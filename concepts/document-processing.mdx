@@ -1,0 +1,282 @@
+---
+title: 'Document Processing'
+description: 'Understand how documents are chunked and prepared for retrieval'
+icon: 'file-lines'
+---
+
+## Why Document Processing Matters
+
+Raw documents are too large to feed into LLMs in their entirety. Document processing breaks them into smaller, semantically meaningful chunks that can be:
+
+1. **Embedded** as vectors for similarity search
+2. **Retrieved** individually based on relevance
+3. **Fit** within the LLM's context window
+
+<Note>
+  Good chunking is critical for RAG performance. Chunks must be large enough to be meaningful but small enough to be specific.
+</Note>
+
+## The Processing Pipeline
+
+RAG Chat processes PDF documents through three stages:
+
+<CardGroup cols={3}>
+  <Card title="1. Load" icon="file-arrow-up">
+    Extract text from PDF using PyPDFLoader
+  </Card>
+  <Card title="2. Split" icon="scissors">
+    Chunk text using RecursiveCharacterTextSplitter
+  </Card>
+  <Card title="3. Embed" icon="vector-square">
+    Convert chunks to vectors and store in ChromaDB
+  </Card>
+</CardGroup>
+
+## PDF Loading
+
+The `process_file()` function handles PDF uploads:
+
+```python app.py
+def process_file(file):
+    with NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+        temp_file.write(file.read())
+        temp_file_path = temp_file.name
+        loader = PyPDFLoader(temp_file_path)
+        docs = loader.load()
+        
+        # ... splitting happens next ...
+        
+        os.remove(temp_file_path)
+        return chunks
+```
+
+<Info>
+  Streamlit file uploads are in-memory. The code saves them to a temporary file so PyPDFLoader can read them, then deletes the temp file after processing.
+</Info>
+
+### What PyPDFLoader Extracts
+
+PyPDFLoader reads PDF files and extracts:
+- Raw text content from each page
+- Page numbers (stored as metadata)
+- Document structure
+
+The result is a list of `Document` objects, one per page.
+
+## Text Chunking
+
+### The RecursiveCharacterTextSplitter
+
+After loading, documents are split into chunks:
+
+```python app.py
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size = 1000,
+    chunk_overlap = 400
+)
+chunks = text_splitter.split_documents(docs)
+```
+
+This configuration is carefully tuned for RAG:
+
+<Accordion title="Parameter Breakdown">
+  - **`chunk_size=1000`**: Each chunk is ~1000 characters (≈200-250 words)
+  - **`chunk_overlap=400`**: Consecutive chunks share 400 characters
+  - **"Recursive"**: Tries to split on natural boundaries (paragraphs, sentences, words)
+</Accordion>
+
+### Why 1000 Characters?
+
+The chunk size balances two competing needs:
+
+<CardGroup cols={2}>
+  <Card title="Too Small (< 500)" icon="down">
+    Lacks context; may miss connections between ideas
+  </Card>
+  <Card title="Too Large (> 2000)" icon="up">
+    Too much noise; reduces retrieval precision
+  </Card>
+  <Card title="Just Right (1000)" icon="check">
+    Captures complete thoughts; good for semantic search
+  </Card>
+  <Card title="With Overlap (400)" icon="link">
+    Ensures concepts spanning boundaries are captured
+  </Card>
+</CardGroup>
+
+### The Importance of Overlap
+
+Chunk overlap prevents information loss at boundaries:
+
+```
+Chunk 1: "...important concept is RAG. RAG combines retrieval..."
+Chunk 2: "...RAG combines retrieval with generation to improve..."
+                  ↑ 400 character overlap ↑
+```
+
+<Note>
+  Without overlap, a concept split across chunks might not be retrieved. The 400-character overlap ensures context continuity.
+</Note>
+
+## Recursive Splitting Strategy
+
+The "recursive" part of `RecursiveCharacterTextSplitter` means it tries multiple separators in order:
+
+1. **Paragraph breaks** (`\n\n`)
+2. **Line breaks** (`\n`)
+3. **Sentences** (`. `)
+4. **Words** (` `)
+5. **Characters** (last resort)
+
+This preserves natural semantic boundaries when possible.
+
+<Accordion title="Example: Splitting in Action">
+  ```
+  Original text (2500 chars):
+  "RAG is a technique... [paragraph] ...vector stores enable... [paragraph] ...chunking matters because..."
+  
+  Step 1: Try splitting on paragraph breaks
+  → Paragraph 1: 900 chars ✓ (fits in 1000)
+  → Paragraph 2: 1100 chars ✗ (too big)
+  
+  Step 2: Split Paragraph 2 on sentence boundaries
+  → Paragraph 2a: 800 chars ✓
+  → Paragraph 2b: 300 chars ✓
+  
+  Result: 3 chunks, all semantically coherent
+  ```
+</Accordion>
+
+## Complete Processing Function
+
+Here's the full `process_file()` function:
+
+```python app.py
+def process_file(file):
+    # Save uploaded file temporarily
+    with NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+        temp_file.write(file.read())
+        temp_file_path = temp_file.name
+        
+        # Load PDF and extract text
+        loader = PyPDFLoader(temp_file_path)
+        docs = loader.load()
+
+        # Split into chunks
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size = 1000,
+            chunk_overlap = 400
+        )
+        chunks = text_splitter.split_documents(docs)
+        
+        # Clean up temp file
+        os.remove(temp_file_path)
+
+        return chunks
+```
+
+## Integration with Vector Store
+
+Processed chunks flow into the vector store:
+
+```python app.py
+all_chunks = []
+for uploaded_file in uploaded_files:
+    chunks = process_file(uploaded_file)
+    all_chunks.extend(chunks)
+
+if all_chunks:
+    vector_store = add_to_vector_store(
+        vector_store = vector_store,
+        documents = all_chunks
+    )
+```
+
+Each chunk is:
+1. Converted to a vector embedding via OpenAI API
+2. Stored in ChromaDB with its original text
+3. Indexed for fast similarity search
+
+## Chunking Best Practices
+
+### For Different Document Types
+
+<CardGroup cols={2}>
+  <Card title="Research Papers" icon="microscope">
+    chunk_size=1000 works well; captures full paragraphs
+  </Card>
+  <Card title="Legal Documents" icon="gavel">
+    chunk_size=1500; longer clauses need more context
+  </Card>
+  <Card title="News Articles" icon="newspaper">
+    chunk_size=800; shorter, punchier content
+  </Card>
+  <Card title="Technical Manuals" icon="book">
+    chunk_size=1200; procedures need complete steps
+  </Card>
+</CardGroup>
+
+### Tuning Chunk Size
+
+If retrieval quality is poor, consider:
+
+- **Smaller chunks (500-800)**: When answers are very specific and localized
+- **Larger chunks (1200-1500)**: When answers need more surrounding context
+- **More overlap (500-600)**: For dense, technical content where concepts are tightly connected
+- **Less overlap (200-300)**: For simple documents with clear topic boundaries
+
+<Info>
+  The current configuration (1000/400) is a good starting point for most documents.
+</Info>
+
+## Performance Implications
+
+### Chunk Count
+
+A 100-page PDF (≈50,000 words) produces:
+- **Character count**: ≈250,000 characters
+- **Chunks**: ≈250 chunks (at 1000 chars each with overlap)
+- **Embedding cost**: ≈$0.10-0.15
+- **Storage**: A few MB in ChromaDB
+
+### Processing Time
+
+For typical PDFs:
+- **PDF loading**: 1-3 seconds
+- **Text splitting**: < 1 second
+- **Embedding API calls**: 5-15 seconds (depends on chunk count)
+- **Vector store insertion**: 1-2 seconds
+
+<Note>
+  The embedding API calls are the bottleneck. LangChain batches requests automatically for efficiency.
+</Note>
+
+## Metadata Preservation
+
+Chunks retain metadata from the original PDF:
+
+```python
+{
+  "page_content": "RAG combines retrieval with generation...",
+  "metadata": {
+    "source": "research_paper.pdf",
+    "page": 3
+  }
+}
+```
+
+This allows for:
+- Source attribution in responses
+- Filtering by page number
+- Document provenance tracking
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Vector Store" icon="database" href="/concepts/vector-store">
+    Learn how processed chunks are stored and retrieved
+  </Card>
+  <Card title="RAG Overview" icon="brain" href="/concepts/rag-overview">
+    See how chunking fits into the complete RAG pipeline
+  </Card>
+</CardGroup>

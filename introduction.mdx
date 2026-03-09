@@ -1,0 +1,82 @@
+---
+title: "Introduction"
+description: "A Retrieval-Augmented Generation chatbot built with Streamlit that allows you to upload documents and ask questions about their content using OpenAI's GPT models."
+---
+
+## Welcome to RAG Chat
+
+RAG Chat is an intelligent document question-answering system that combines the power of Retrieval-Augmented Generation (RAG) with OpenAI's GPT models. Upload your PDF documents and interact with them through natural language questions.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running with RAG Chat in minutes
+  </Card>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Complete setup instructions and dependencies
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/rag-overview">
+    Learn how RAG technology works
+  </Card>
+  <Card title="API Reference" icon="code" href="/reference/api">
+    Explore the function API
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Document Upload" icon="file-pdf">
+    Upload and process PDF documents for intelligent question answering
+  </Card>
+  <Card title="Multiple GPT Models" icon="brain">
+    Choose from GPT-3.5, GPT-4, GPT-4 Turbo, and GPT-4o models
+  </Card>
+  <Card title="Persistent Vector Store" icon="database">
+    ChromaDB-powered embeddings store that persists across sessions
+  </Card>
+  <Card title="Chat Interface" icon="comments">
+    Interactive Streamlit interface with conversation history
+  </Card>
+  <Card title="Smart Chunking" icon="scissors">
+    Intelligent document splitting with configurable overlap
+  </Card>
+  <Card title="Context-Aware" icon="lightbulb">
+    Responses that leverage full chat history for better context
+  </Card>
+</CardGroup>
+
+## How It Works
+
+RAG Chat combines several technologies to provide accurate, context-aware answers:
+
+1. **Document Processing** - PDF documents are loaded and split into manageable chunks using LangChain's text splitters
+2. **Embedding Generation** - Document chunks are converted to vector embeddings using OpenAI's embedding models
+3. **Vector Storage** - Embeddings are stored in ChromaDB for efficient similarity search
+4. **Question Answering** - When you ask a question, relevant document chunks are retrieved and sent to GPT models for answer generation
+5. **Interactive Chat** - The Streamlit interface provides a seamless chat experience with conversation history
+
+## Technology Stack
+
+RAG Chat is built on modern AI and data processing tools:
+
+- **LangChain** - Framework for building LLM applications
+- **ChromaDB** - Vector database for embedding storage and retrieval
+- **OpenAI API** - GPT models and embedding generation
+- **Streamlit** - Interactive web interface
+- **PyPDF** - PDF document processing
+
+## Next Steps
+
+<Steps>
+  <Step title="Install Dependencies">
+    Follow the [installation guide](/installation) to set up your environment
+  </Step>
+  <Step title="Configure API Key">
+    Set up your OpenAI API key in the environment
+  </Step>
+  <Step title="Run the Application">
+    Launch the Streamlit app and start asking questions
+  </Step>
+</Steps>
+
+Ready to get started? Head over to the [quickstart guide](/quickstart) to run your first query.

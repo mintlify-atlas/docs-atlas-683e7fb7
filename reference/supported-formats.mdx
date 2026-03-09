@@ -1,0 +1,322 @@
+---
+title: 'Supported Formats'
+description: 'File formats and limitations for RAG Chat'
+icon: 'file'
+---
+
+## Overview
+
+RAG Chat currently supports PDF documents as input for the RAG (Retrieval-Augmented Generation) system. Understanding file format support and limitations ensures optimal performance and accuracy.
+
+---
+
+## Supported File Formats
+
+### PDF Documents
+
+<ParamField path="PDF" type=".pdf" required>
+  Portable Document Format - the only currently supported format for document uploads.
+</ParamField>
+
+**Supported Features:**
+- Text-based PDF files
+- Multi-page documents
+- Multiple file uploads simultaneously
+- Persistent storage across sessions
+
+**Configuration in Code:**
+
+The application explicitly restricts uploads to PDF files only:
+
+```python
+uploaded_files = st.file_uploader(
+    label='Faça aqui o upload dos seus arquivos: ',
+    accept_multiple_files=True,
+    type='pdf',  # Only PDF files accepted
+)
+```
+
+**Source Reference**: `app.py:97-102`
+
+---
+
+## File Processing Details
+
+### Text Extraction
+
+RAG Chat uses **PyPDFLoader** from LangChain to extract text:
+
+```python
+from langchain_community.document_loaders import PyPDFLoader
+
+loader = PyPDFLoader(temp_file_path)
+docs = loader.load()
+```
+
+**How It Works:**
+1. Uploads are saved to temporary files with `.pdf` suffix
+2. PyPDFLoader extracts text from all pages
+3. Text is returned as LangChain Document objects
+4. Temporary files are deleted after processing
+
+### Document Chunking
+
+Extracted text is split into manageable chunks for embedding:
+
+<ParamField path="chunk_size" type="int" default="1000">
+  Maximum number of characters per chunk.
+</ParamField>
+
+<ParamField path="chunk_overlap" type="int" default="400">
+  Number of overlapping characters between consecutive chunks (40% overlap).
+</ParamField>
+
+**Why Chunking Matters:**
+- **Embedding Limits**: OpenAI embeddings work best with smaller text segments
+- **Context Preservation**: 40% overlap ensures continuity across chunks
+- **Retrieval Accuracy**: Smaller chunks improve semantic search precision
+
+**Configuration:**
+
+```python
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=1000,
+    chunk_overlap=400
+)
+chunks = text_splitter.split_documents(docs)
+```
+
+**Source Reference**: `app.py:33-37`
+
+---
+
+## File Limitations
+
+### Format Restrictions
+
+<Warning>
+  Only PDF files are currently supported. Other formats will be rejected by the file uploader.
+</Warning>
+
+**Unsupported Formats:**
+- Word documents (`.doc`, `.docx`)
+- Plain text files (`.txt`)
+- Markdown files (`.md`)
+- HTML files (`.html`)
+- Images (`.jpg`, `.png`)
+- Spreadsheets (`.xls`, `.xlsx`, `.csv`)
+
+### PDF Type Limitations
+
+<AccordionGroup>
+  <Accordion title="Scanned PDFs / Image-Based PDFs">
+    **Problem**: PDFs that are scanned images without embedded text will not work properly.
+    
+    **Why**: PyPDFLoader extracts text layers, not images. Scanned documents appear as blank pages.
+    
+    **Solution**: Use OCR (Optical Character Recognition) to convert scanned PDFs to text-searchable PDFs first, or use a different document loader that includes OCR capabilities.
+  </Accordion>
+
+  <Accordion title="Password-Protected PDFs">
+    **Problem**: Encrypted or password-protected PDFs cannot be processed.
+    
+    **Why**: PyPDFLoader cannot access encrypted content without decryption.
+    
+    **Solution**: Remove password protection before uploading, or implement password handling in the application.
+  </Accordion>
+
+  <Accordion title="PDFs with Complex Layouts">
+    **Problem**: PDFs with tables, multi-column layouts, or heavy formatting may extract poorly.
+    
+    **Why**: PyPDFLoader extracts text in reading order, which may not match visual layout.
+    
+    **Solution**: 
+    - Pre-process PDFs to simplify layout
+    - Use specialized loaders for structured data
+    - Verify extraction quality with test uploads
+  </Accordion>
+
+  <Accordion title="Very Large PDFs">
+    **Problem**: Extremely large files (100+ pages, 50+ MB) may cause performance issues.
+    
+    **Why**: 
+    - Large files take longer to process
+    - Generate many chunks, increasing embedding costs
+    - May exceed memory limits in constrained environments
+    
+    **Solution**:
+    - Split large documents into smaller sections
+    - Process documents in batches
+    - Monitor OpenAI API costs for large uploads
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Best Practices for Source Documents
+
+### Ideal Document Characteristics
+
+<CardGroup cols={2}>
+  <Card title="Text-Based PDFs" icon="file-lines">
+    Documents with selectable text, not scanned images
+  </Card>
+  
+  <Card title="Clear Structure" icon="list">
+    Well-organized content with headings and paragraphs
+  </Card>
+  
+  <Card title="Reasonable Size" icon="arrows-minimize">
+    5-50 pages per document for optimal performance
+  </Card>
+  
+  <Card title="Relevant Content" icon="bullseye">
+    Documents focused on topics you want to query
+  </Card>
+</CardGroup>
+
+### Document Quality Tips
+
+<Steps>
+  <Step title="Verify Text Extraction">
+    Test document quality by trying to copy/paste text from your PDF. If you can select and copy text, it will likely work well.
+  </Step>
+  
+  <Step title="Remove Unnecessary Pages">
+    Delete cover pages, tables of contents, and appendices that don't contain relevant information. This reduces processing time and costs.
+  </Step>
+  
+  <Step title="Use Native PDFs When Possible">
+    PDFs exported directly from Word, Google Docs, or LaTeX typically work better than scanned documents.
+  </Step>
+  
+  <Step title="Check File Size">
+    Keep individual files under 10 MB when possible. Larger files can be split into sections.
+  </Step>
+</Steps>
+
+---
+
+## Multiple File Uploads
+
+RAG Chat supports uploading multiple PDF files simultaneously:
+
+```python
+accept_multiple_files=True  # app.py:99
+```
+
+**How It Works:**
+
+<Steps>
+  <Step title="Upload Multiple Files">
+    Select multiple PDF files in the file uploader interface.
+  </Step>
+  
+  <Step title="Sequential Processing">
+    Each file is processed one at a time:
+    ```python
+    for uploaded_file in uploaded_files:
+        chunks = process_file(uploaded_file)
+        all_chunks.extend(chunks)
+    ```
+  </Step>
+  
+  <Step title="Combined Vector Store">
+    All chunks from all files are added to a single vector store:
+    ```python
+    vector_store = add_to_vector_store(
+        vector_store=vector_store,
+        documents=all_chunks
+    )
+    ```
+  </Step>
+  
+  <Step title="Unified Search">
+    When asking questions, the system searches across all uploaded documents.
+  </Step>
+</Steps>
+
+**Benefits:**
+- Build a comprehensive knowledge base from multiple sources
+- Compare information across different documents
+- Ask questions that span multiple files
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Upload Rejected - Wrong File Type">
+    **Symptoms**: File uploader doesn't accept your file
+    
+    **Solutions**:
+    - Verify file has `.pdf` extension
+    - Check that file is actually a PDF (not renamed from another format)
+    - Try re-exporting as PDF from the original application
+  </Accordion>
+
+  <Accordion title="PDF Uploaded but No Text Extracted">
+    **Symptoms**: File processes successfully but responses say "no information available"
+    
+    **Solutions**:
+    - Check if PDF is scanned/image-based (try selecting text in PDF viewer)
+    - Use OCR software to convert scanned PDF to searchable PDF
+    - Verify PDF isn't corrupted by opening in multiple PDF readers
+  </Accordion>
+
+  <Accordion title="Processing Very Slow">
+    **Symptoms**: File upload takes minutes to complete
+    
+    **Solutions**:
+    - Split large PDFs into smaller files (10-20 pages each)
+    - Upload fewer files at once
+    - Check file size - consider compressing large PDFs
+    - Ensure stable internet connection for OpenAI API calls
+  </Accordion>
+
+  <Accordion title="Gibberish or Garbled Text in Responses">
+    **Symptoms**: Extracted text appears scrambled or nonsensical
+    
+    **Solutions**:
+    - PDF may have encoding issues - try re-exporting from source
+    - Check if PDF uses custom fonts that don't embed properly
+    - For non-English text, verify UTF-8 encoding support
+    - Try opening PDF in different viewer to confirm text quality
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Future Format Support
+
+While only PDFs are currently supported, the architecture could be extended to support:
+
+<CardGroup cols={2}>
+  <Card title="Word Documents" icon="file-word">
+    Using `UnstructuredWordDocumentLoader` from LangChain
+  </Card>
+  
+  <Card title="Markdown Files" icon="markdown">
+    Using `UnstructuredMarkdownLoader` for documentation
+  </Card>
+  
+  <Card title="Web Pages" icon="globe">
+    Using `WebBaseLoader` for online content
+  </Card>
+  
+  <Card title="Text Files" icon="file-text">
+    Using `TextLoader` for plain text documents
+  </Card>
+</CardGroup>
+
+<Note>
+  To request additional format support, contribute to the project or submit a feature request on the GitHub repository.
+</Note>
+
+---
+
+## Related Resources
+
+- [LangChain Document Loaders](https://python.langchain.com/docs/modules/data_connection/document_loaders/)
+- [PyPDFLoader Documentation](https://python.langchain.com/docs/modules/data_connection/document_loaders/pdf)
+- [API Reference - process_file()](/reference/api#process-filefile)

@@ -1,0 +1,154 @@
+---
+title: 'RAG Overview'
+description: 'Understand Retrieval-Augmented Generation and how it powers RAG Chat'
+icon: 'brain'
+---
+
+## What is RAG?
+
+Retrieval-Augmented Generation (RAG) is a technique that combines the power of large language models (LLMs) with external knowledge retrieval. Instead of relying solely on the model's training data, RAG dynamically retrieves relevant information from your documents to generate accurate, context-aware responses.
+
+<Note>
+  RAG solves the "hallucination" problem by grounding LLM responses in actual document content, ensuring answers are based on your specific data rather than general knowledge.
+</Note>
+
+## Why Use RAG?
+
+RAG offers several key advantages:
+
+<CardGroup cols={2}>
+  <Card title="Up-to-date Information" icon="clock">
+    Query your latest documents without retraining the model
+  </Card>
+  <Card title="Source Attribution" icon="link">
+    Answers are grounded in retrievable document chunks
+  </Card>
+  <Card title="Domain Expertise" icon="graduation-cap">
+    Works with specialized knowledge not in the model's training data
+  </Card>
+  <Card title="Cost Effective" icon="dollar-sign">
+    Cheaper than fine-tuning models on custom data
+  </Card>
+</CardGroup>
+
+## The RAG Pipeline
+
+RAG Chat implements the classic three-step RAG pipeline:
+
+### 1. Retrieval
+
+When you ask a question, the system searches the vector store for the most relevant document chunks:
+
+```python app.py
+retriever = vector_store.as_retriever()
+```
+
+The retriever converts your question into a vector embedding and finds chunks with similar embeddings using semantic similarity search.
+
+### 2. Augmentation
+
+Retrieved chunks are injected into the prompt as context:
+
+```python app.py
+system_prompt = '''
+Use o contexto para responder as perguntas.
+Se não encontrar uma resposta no contexto,
+explique que não há informações disponíveis.
+Responda em formato de markdown e com visualizações
+elaboradas e interativas.
+Contexto: {context}
+'''
+```
+
+The `{context}` placeholder is filled with the most relevant chunks from your documents.
+
+### 3. Generation
+
+The LLM generates a response based on both the question and the retrieved context:
+
+```python app.py
+chain = (
+    {
+        'context': retriever,
+        'input': RunnablePassthrough()
+    }
+    | prompt
+    | llm
+)
+response = chain.invoke(query)
+```
+
+<Info>
+  LangChain's LCEL (LangChain Expression Language) chains these steps together elegantly using the `|` operator.
+</Info>
+
+## Complete RAG Implementation
+
+Here's the full `ask_question()` function that orchestrates the RAG pipeline:
+
+```python app.py
+def ask_question(model, query, vector_store):
+    llm = ChatOpenAI(model = model)
+    retriever = vector_store.as_retriever()
+
+    system_prompt = '''
+    Use o contexto para responder as perguntas.
+    Se não encontrar uma resposta no contexto,
+    explique que não há informações disponíveis.
+    Responda em formato de markdown e com visualizações
+    elaboradas e interativas.
+    Contexto: {context}
+    '''
+
+    messages = [('system', system_prompt)]
+    for message in st.session_state.messages:
+        messages.append((message.get('role'), message.get('content')))
+    
+    prompt = ChatPromptTemplate.from_messages(messages)
+    chain = (
+        {
+            'context': retriever,
+            'input': RunnablePassthrough()
+        }
+        | prompt
+        | llm
+    )
+    response = chain.invoke(query)
+    return response.content
+```
+
+## How It Works in Practice
+
+<Accordion title="Example: Asking a Question">
+  1. **User asks**: "What are the main findings in the research paper?"
+  2. **Retrieval**: The question is embedded and used to search the vector store
+  3. **Top chunks retrieved**: The 4 most relevant chunks from the paper are found
+  4. **Augmentation**: These chunks are inserted into the system prompt as context
+  5. **Generation**: GPT-4 reads the context and generates a summary of findings
+  6. **Response**: The user receives an answer grounded in the actual document content
+</Accordion>
+
+## Key Benefits
+
+The RAG approach in RAG Chat provides:
+
+- **Accuracy**: Answers based on your actual documents, not generic knowledge
+- **Transparency**: The system can only answer based on uploaded content
+- **Flexibility**: Works with any PDF documents you upload
+- **Conversation**: Maintains chat history for multi-turn conversations
+- **Model Choice**: Switch between GPT-3.5, GPT-4, and other models
+
+<Note>
+  The system prompt explicitly instructs the model to say when information isn't available in the context, preventing hallucinations.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Vector Store" icon="database" href="/concepts/vector-store">
+    Learn how ChromaDB stores and retrieves document embeddings
+  </Card>
+  <Card title="Document Processing" icon="file-lines" href="/concepts/document-processing">
+    Understand how documents are chunked and prepared for RAG
+  </Card>
+</CardGroup>

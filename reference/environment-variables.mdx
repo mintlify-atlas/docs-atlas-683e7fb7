@@ -1,0 +1,219 @@
+---
+title: 'Environment Variables'
+description: 'Configure RAG Chat with environment variables'
+icon: 'key'
+---
+
+## Overview
+
+RAG Chat requires environment variables to authenticate with external services. All variables should be stored in a `.env` file in the project root directory.
+
+---
+
+## Required Variables
+
+### OPENAI_API_KEY
+
+<ParamField path="OPENAI_API_KEY" type="string" required>
+  Your OpenAI API key for accessing GPT models and embedding services.
+</ParamField>
+
+**Used For:**
+- Generating text embeddings via `OpenAIEmbeddings()`
+- Powering chat responses through `ChatOpenAI()`
+- Both embedding and chat functionality require a valid API key
+
+**Format:**
+```bash
+OPENAI_API_KEY='sk-proj-xxxxxxxxxxxxxxxxxxxx'
+```
+
+---
+
+## Setup Instructions
+
+### 1. Obtain an OpenAI API Key
+
+<Steps>
+  <Step title="Create OpenAI Account">
+    Visit [platform.openai.com](https://platform.openai.com) and sign up or log in to your account.
+  </Step>
+  
+  <Step title="Navigate to API Keys">
+    Go to **Settings** → **API Keys** or visit [platform.openai.com/api-keys](https://platform.openai.com/api-keys) directly.
+  </Step>
+  
+  <Step title="Create New Key">
+    Click **"Create new secret key"** and give it a descriptive name (e.g., "RAG Chat Development").
+  </Step>
+  
+  <Step title="Copy and Store">
+    Copy the key immediately. OpenAI will only show it once. Store it securely.
+  </Step>
+</Steps>
+
+### 2. Configure Your Project
+
+<CodeGroup>
+
+```bash .env
+OPENAI_API_KEY='sk-proj-your-actual-key-here'
+```
+
+```bash .env.example
+OPENAI_API_KEY=''
+```
+
+</CodeGroup>
+
+<Steps>
+  <Step title="Create .env File">
+    Copy the `.env.example` file to `.env` in your project root:
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+  
+  <Step title="Add Your Key">
+    Edit `.env` and paste your OpenAI API key:
+    ```bash
+    OPENAI_API_KEY='sk-proj-xxxxxxxxxxxxxxxxxxxx'
+    ```
+  </Step>
+  
+  <Step title="Verify Loading">
+    The application automatically loads environment variables using `python-dotenv`:
+    ```python
+    from dotenv import load_dotenv
+    load_dotenv()  # Called at app.py:13
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Security Best Practices
+
+<Warning>
+  Never commit your `.env` file to version control. Always keep API keys private.
+</Warning>
+
+### Protect Your API Key
+
+<AccordionGroup>
+  <Accordion title="Add .env to .gitignore">
+    Ensure `.env` is listed in your `.gitignore` file:
+    ```bash .gitignore
+    # Environment variables
+    .env
+    .env.local
+    ```
+    The project includes `.env.example` as a template with empty values.
+  </Accordion>
+
+  <Accordion title="Use Separate Keys for Different Environments">
+    Create different API keys for:
+    - Development and testing
+    - Production deployments
+    - Team members (if applicable)
+    
+    This makes it easier to rotate keys and track usage.
+  </Accordion>
+
+  <Accordion title="Monitor API Usage">
+    Regularly check your OpenAI dashboard for:
+    - Unexpected usage spikes
+    - API calls from unknown sources
+    - Cost tracking and budget alerts
+    
+    Set up usage limits in the OpenAI dashboard to prevent overcharges.
+  </Accordion>
+
+  <Accordion title="Rotate Keys Regularly">
+    For production applications:
+    - Rotate API keys every 90 days
+    - Immediately rotate if a key may have been exposed
+    - Delete unused keys from the OpenAI dashboard
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Deployment Configuration
+
+When deploying RAG Chat, configure environment variables through your hosting platform:
+
+<Tabs>
+  <Tab title="Streamlit Cloud">
+    1. Go to your app settings in Streamlit Cloud
+    2. Navigate to **Secrets**
+    3. Add your environment variables in TOML format:
+    ```toml
+    OPENAI_API_KEY = "sk-proj-xxxxxxxxxxxxxxxxxxxx"
+    ```
+  </Tab>
+  
+  <Tab title="Docker">
+    Pass environment variables using the `-e` flag:
+    ```bash
+    docker run -e OPENAI_API_KEY='sk-proj-xxx' rag-chat
+    ```
+    
+    Or use an env file:
+    ```bash
+    docker run --env-file .env rag-chat
+    ```
+  </Tab>
+  
+  <Tab title="Cloud Platforms">
+    Most cloud platforms provide environment variable configuration:
+    - **Heroku**: Config Vars in Settings
+    - **AWS**: Environment Variables in Lambda/ECS
+    - **Google Cloud**: Runtime environment variables
+    - **Azure**: Application Settings
+  </Tab>
+</Tabs>
+
+---
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="AuthenticationError: Invalid API Key">
+    **Symptoms**: Application crashes with OpenAI authentication error
+    
+    **Solutions**:
+    - Verify your API key is correctly copied (no extra spaces)
+    - Check that `.env` is in the project root directory
+    - Ensure the key starts with `sk-proj-` or `sk-`
+    - Verify the key hasn't been revoked in OpenAI dashboard
+  </Accordion>
+
+  <Accordion title="Environment Variable Not Loading">
+    **Symptoms**: Application can't find `OPENAI_API_KEY`
+    
+    **Solutions**:
+    - Restart the application after creating `.env`
+    - Check that `python-dotenv` is installed: `pip install python-dotenv`
+    - Verify `.env` file is not named `.env.txt` or similar
+    - Check file permissions (should be readable)
+  </Accordion>
+
+  <Accordion title="Rate Limit Errors">
+    **Symptoms**: `RateLimitError` from OpenAI API
+    
+    **Solutions**:
+    - Check your API usage limits in OpenAI dashboard
+    - Upgrade to a paid OpenAI account if on free tier
+    - Implement rate limiting in your application
+    - Consider using a lower-tier model (e.g., `gpt-3.5-turbo`)
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Related Resources
+
+- [OpenAI API Documentation](https://platform.openai.com/docs)
+- [OpenAI API Keys Management](https://platform.openai.com/api-keys)
+- [OpenAI Pricing](https://openai.com/pricing)

@@ -1,0 +1,209 @@
+---
+title: 'Vector Store'
+description: 'Learn how ChromaDB enables semantic search with vector embeddings'
+icon: 'database'
+---
+
+## What is a Vector Store?
+
+A vector store is a specialized database that stores text as high-dimensional numerical vectors (embeddings) and enables fast similarity search. Instead of keyword matching, vector stores find semantically similar content based on meaning.
+
+<Note>
+  Vector embeddings capture the semantic meaning of text. Similar concepts have similar vectors, even if they use different words.
+</Note>
+
+## Why Vector Embeddings?
+
+Traditional keyword search fails when questions and answers use different terminology:
+
+<CardGroup cols={2}>
+  <Card title="Keyword Search" icon="magnifying-glass">
+    Query: "revenue growth" → Only finds exact phrase "revenue growth"
+  </Card>
+  <Card title="Vector Search" icon="sparkles">
+    Query: "revenue growth" → Finds "sales increase", "income expansion", etc.
+  </Card>
+</CardGroup>
+
+Vector embeddings understand that "revenue" and "sales" are semantically related, enabling more intelligent retrieval.
+
+## ChromaDB in RAG Chat
+
+RAG Chat uses [ChromaDB](https://www.trychroma.com/) as its vector store. ChromaDB is lightweight, fast, and perfect for local deployments.
+
+### Loading an Existing Vector Store
+
+When the app starts, it checks for previously stored documents:
+
+```python app.py
+persistant_directory = 'db'
+
+def load_existing_vector_store():
+    if os.path.exists(persistant_directory):
+        vector_store = Chroma(
+            persist_directory=persistant_directory,
+            embedding_function=OpenAIEmbeddings()
+        )
+        return vector_store
+    return None
+```
+
+<Info>
+  The `db` directory stores all your document embeddings persistently. This means your documents remain available even after restarting the application.
+</Info>
+
+### Creating a New Vector Store
+
+When you upload your first document, ChromaDB creates a new vector store:
+
+```python app.py
+def add_to_vector_store(documents, vector_store = None):
+    if vector_store:
+        vector_store.add_documents(documents)
+    else:
+        vector_store = Chroma.from_documents(
+            documents=documents,
+            embedding=OpenAIEmbeddings(),
+            persist_directory=persistant_directory
+        )
+    return vector_store
+```
+
+This function handles both scenarios:
+- **New store**: Creates a fresh ChromaDB instance with `from_documents()`
+- **Existing store**: Adds new documents to the existing collection with `add_documents()`
+
+## The Embedding Process
+
+<Accordion title="How Text Becomes Vectors">
+  1. **Text chunk**: "RAG combines retrieval with generation"
+  2. **OpenAI Embedding API**: Converts text to a 1536-dimensional vector
+  3. **Vector**: `[0.023, -0.145, 0.891, ..., 0.234]` (1536 numbers)
+  4. **Storage**: ChromaDB stores the vector along with the original text
+  5. **Retrieval**: Query vectors are compared to stored vectors using cosine similarity
+</Accordion>
+
+### OpenAI Embeddings
+
+RAG Chat uses OpenAI's `text-embedding-ada-002` model through `OpenAIEmbeddings()`:
+
+```python app.py
+from langchain_openai import OpenAIEmbeddings
+
+# Used when loading existing store
+embedding_function=OpenAIEmbeddings()
+
+# Used when creating new store
+embedding=OpenAIEmbeddings()
+```
+
+<Note>
+  The same embedding model must be used for both storing and querying to ensure vectors are in the same semantic space.
+</Note>
+
+## Similarity Search
+
+When you ask a question, ChromaDB performs similarity search:
+
+```python app.py
+retriever = vector_store.as_retriever()
+```
+
+The retriever:
+1. Embeds your question using OpenAI's embedding model
+2. Computes similarity between the question vector and all stored chunk vectors
+3. Returns the top-k most similar chunks (default k=4)
+4. These chunks become the context for the LLM
+
+### Cosine Similarity
+
+ChromaDB uses cosine similarity to measure how close two vectors are:
+
+- **1.0**: Identical meaning
+- **0.8-0.9**: Very similar
+- **0.5-0.7**: Somewhat related
+- **< 0.5**: Not very similar
+
+## Persistence
+
+The `db` directory contains all your vector store data:
+
+```
+db/
+├── chroma.sqlite3          # Metadata and document text
+└── [uuid-folders]/         # Vector index files
+```
+
+<Info>
+  Your uploaded documents persist across sessions. Delete the `db` directory to reset the vector store.
+</Info>
+
+### Advantages of Persistence
+
+<CardGroup cols={2}>
+  <Card title="Fast Startup" icon="bolt">
+    No need to re-process documents every time
+  </Card>
+  <Card title="Incremental Updates" icon="plus">
+    Add new documents without losing existing ones
+  </Card>
+  <Card title="Cost Savings" icon="piggy-bank">
+    Avoid redundant embedding API calls
+  </Card>
+  <Card title="Reliability" icon="shield">
+    Data survives application restarts
+  </Card>
+</CardGroup>
+
+## Code Flow Example
+
+Here's how documents flow into the vector store:
+
+```python
+# 1. User uploads PDF files
+uploaded_files = st.file_uploader(...)
+
+# 2. Process each file into chunks
+all_chunks = []
+for uploaded_file in uploaded_files:
+    chunks = process_file(uploaded_file)  # Creates text chunks
+    all_chunks.extend(chunks)
+
+# 3. Add chunks to vector store
+if all_chunks:
+    vector_store = add_to_vector_store(
+        vector_store = vector_store,  # Existing or None
+        documents = all_chunks         # New chunks to add
+    )
+```
+
+## Performance Considerations
+
+### Embedding Costs
+
+OpenAI charges per token for embeddings:
+- **Model**: `text-embedding-ada-002`
+- **Cost**: ~$0.0001 per 1K tokens
+- **Example**: A 100-page document might cost $0.05-$0.15 to embed
+
+<Note>
+  Embeddings are only computed once per document chunk. Queries use the same model but only embed the question (very cheap).
+</Note>
+
+### Retrieval Speed
+
+ChromaDB is optimized for fast retrieval:
+- **Small collections** (< 10K chunks): Near-instant retrieval
+- **Medium collections** (10K-100K chunks): Milliseconds
+- **Large collections** (> 100K chunks): Consider approximate nearest neighbor (ANN) indices
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Document Processing" icon="file-lines" href="/concepts/document-processing">
+    Learn how documents are split into chunks before embedding
+  </Card>
+  <Card title="RAG Overview" icon="brain" href="/concepts/rag-overview">
+    Understand the complete RAG pipeline
+  </Card>
+</CardGroup>

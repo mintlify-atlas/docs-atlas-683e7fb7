@@ -1,80 +1,186 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Get up and running with RAG Chat in minutes'
 ---
 
-## Get started in three steps
+This quickstart guide will help you go from installation to asking your first question about a PDF document in just a few steps.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+- Python 3.8 or higher installed
+- An OpenAI API key ([get one here](https://platform.openai.com/api-keys))
+- A PDF document to test with
+
+## Quick Setup
+
+<Steps>
+  <Step title="Clone and navigate to the project">
+    ```bash
+    git clone <your-repo-url>
+    cd rag-chat
+    ```
+  </Step>
+
+  <Step title="Create a virtual environment">
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    pip install -r requirements.txt
+    ```
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    This installs the core dependencies:
+    - `streamlit` - Web interface
+    - `langchain` - RAG framework
+    - `langchain-chroma` - Vector database
+    - `langchain-openai` - OpenAI integration
+    - `pypdf` - PDF processing
+  </Step>
+
+  <Step title="Configure your OpenAI API key">
+    Create a `.env` file from the example:
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    ```bash
+    cp .env.example .env
+    ```
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    Then edit `.env` and add your API key:
+    
+    ```bash
+    OPENAI_API_KEY='sk-your-actual-api-key-here'
+    ```
+    
+    <Warning>
+      Never commit your `.env` file to version control. The `.gitignore` file is already configured to exclude it.
+    </Warning>
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Launch the application">
+    ```bash
+    streamlit run app.py
+    ```
+    
+    Your browser will automatically open to `http://localhost:8501`
+  </Step>
+</Steps>
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+## Your First Query
 
-### Step 3: Go live
+Once the application is running, you can immediately start asking questions about your documents.
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Steps>
+  <Step title="Upload a PDF document">
+    1. In the sidebar, click the file uploader under "Upload de arquivos"
+    2. Select one or more PDF files from your computer
+    3. Wait for the processing to complete (you'll see a "Carregando arquivos..." spinner)
+    
+    The application will:
+    - Extract text from your PDF using `PyPDFLoader`
+    - Split it into chunks (1000 characters with 400 character overlap)
+    - Create embeddings using OpenAI's embedding model
+    - Store them in a local ChromaDB vector database
+  </Step>
 
-## Next steps
+  <Step title="Select your AI model">
+    Choose from the available models in the sidebar:
+    - `gpt-3.5-turbo` - Fast and economical
+    - `gpt-4o-mini` - Balanced performance
+    - `gpt-4o` - Most capable
+    - `gpt-4-turbo` or `gpt-4` - Previous generation
+  </Step>
 
-Now that you have your docs running, explore these key features:
+  <Step title="Ask a question">
+    Type your question in the chat input at the bottom of the page:
+    
+    ```
+    What are the main topics covered in this document?
+    ```
+    
+    The RAG system will:
+    1. Retrieve relevant chunks from the vector store
+    2. Send them as context to the LLM
+    3. Generate a response based on your documents
+  </Step>
+</Steps>
 
-<CardGroup cols={2}>
+## Expected Output
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+When you ask a question, you'll see:
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+1. Your question displayed in the chat interface
+2. A "Buscando resposta..." spinner while processing
+3. An AI response formatted in markdown with visualizations
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+The AI will only answer based on the content in your uploaded documents. If the answer isn't found, it will explain that no information is available.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The vector database persists in a local `db/` directory. Documents you upload remain available even after restarting the application.
 </Note>
+
+## How It Works
+
+Under the hood, RAG Chat uses a retrieval-augmented generation pipeline:
+
+```python
+# From app.py:55-82
+def ask_question(model, query, vector_store):
+    llm = ChatOpenAI(model = model)
+    retriever = vector_store.as_retriever()
+
+    system_prompt = '''
+    Use o contexto para responder as perguntas.
+    Se não encontrar uma resposta no contexto,
+    explique que não há informações disponíveis.
+    Responda em formato de markdown e com visualizações
+    elaboradas e interativas.
+    Contexto: {context}
+    '''
+
+    messages = [('system', system_prompt)]
+    for message in st.session_state.messages:
+        messages.append((message.get('role'), message.get('content')))
+    
+    prompt = ChatPromptTemplate.from_messages(messages)
+    chain = (
+        {
+            'context': retriever,
+            'input': RunnablePassthrough()
+        }
+        | prompt
+        | llm
+    )
+    response = chain.invoke(query)
+    return response.content
+```
+
+This chain:
+1. Retrieves relevant document chunks using similarity search
+2. Injects them into the prompt as context
+3. Maintains conversation history for follow-up questions
+4. Returns markdown-formatted responses
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Learn about advanced installation options and troubleshooting
+  </Card>
+  
+  <Card title="RAG Overview" icon="sitemap" href="/concepts/rag-overview">
+    Understand how the RAG pipeline works in detail
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/guides/configuration">
+    Customize chunking, embeddings, and model settings
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/reference/api">
+    Explore the core functions and their parameters
+  </Card>
+</CardGroup>

@@ -1,0 +1,632 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for RAG Chat
+icon: wrench
+---
+
+# Troubleshooting Guide
+
+This guide covers common issues you may encounter while using RAG Chat and their solutions.
+
+## Common Issues
+
+<Accordion title="OpenAI API Key Not Found or Invalid">
+
+### Symptoms
+- Error: `openai.AuthenticationError: No API key provided`
+- Error: `Incorrect API key provided`
+- Application fails to start or respond to queries
+
+### Solution Steps
+
+1. **Verify the `.env` file exists** in your project root (same directory as `app.py`):
+
+   ```bash
+   ls -la .env
+   ```
+
+2. **Check the `.env` file format** (it should match `.env.example`):
+
+   ```bash
+   OPENAI_API_KEY='sk-your-actual-api-key-here'
+   ```
+
+   <Warning>
+   Remove the quotes if your key contains special characters, or ensure there are no extra spaces.
+   </Warning>
+
+3. **Verify the API key is valid:**
+   - Go to [OpenAI API Keys](https://platform.openai.com/api-keys)
+   - Ensure your key is active and not revoked
+   - Check that your account has available credits
+
+4. **Restart the application** after modifying `.env`:
+
+   ```bash
+   # Stop the app (Ctrl+C) and restart
+   streamlit run app.py
+   ```
+
+5. **Test the API key manually:**
+
+   ```python
+   # test_api.py
+   import os
+   from dotenv import load_dotenv
+   from openai import OpenAI
+
+   load_dotenv()
+   api_key = os.getenv('OPENAI_API_KEY')
+   
+   print(f"API Key loaded: {api_key[:8]}...")
+   
+   client = OpenAI(api_key=api_key)
+   response = client.chat.completions.create(
+       model="gpt-3.5-turbo",
+       messages=[{"role": "user", "content": "Hello"}]
+   )
+   print("API key is valid!")
+   ```
+
+### Alternative: Environment Variable
+
+Instead of using `.env`, set the environment variable directly:
+
+```bash
+# Linux/Mac
+export OPENAI_API_KEY='sk-your-api-key-here'
+streamlit run app.py
+
+# Windows (Command Prompt)
+set OPENAI_API_KEY=sk-your-api-key-here
+streamlit run app.py
+
+# Windows (PowerShell)
+$env:OPENAI_API_KEY="sk-your-api-key-here"
+streamlit run app.py
+```
+
+</Accordion>
+
+<Accordion title="Dependency Installation Errors">
+
+### Symptoms
+- `ModuleNotFoundError: No module named 'langchain'`
+- `ImportError: cannot import name 'Chroma' from 'langchain_chroma'`
+- Installation fails with compilation errors
+
+### Solution Steps
+
+1. **Ensure you're using Python 3.9 or higher:**
+
+   ```bash
+   python --version
+   ```
+
+   If you need to install a newer Python version, use [pyenv](https://github.com/pyenv/pyenv) or download from [python.org](https://www.python.org/).
+
+2. **Create a fresh virtual environment:**
+
+   ```bash
+   # Remove old environment if it exists
+   rm -rf venv
+   
+   # Create new virtual environment
+   python -m venv venv
+   
+   # Activate it
+   # Linux/Mac:
+   source venv/bin/activate
+   
+   # Windows:
+   venv\Scripts\activate
+   ```
+
+3. **Upgrade pip and install dependencies:**
+
+   ```bash
+   pip install --upgrade pip setuptools wheel
+   pip install -r requirements.txt
+   ```
+
+4. **If installation fails on specific packages:**
+
+   <CodeGroup>
+
+   ```bash ChromaDB Issues
+   # ChromaDB may require additional system dependencies
+   # On Ubuntu/Debian:
+   sudo apt-get update
+   sudo apt-get install build-essential python3-dev
+   
+   # Then retry:
+   pip install chromadb
+   ```
+
+   ```bash macOS Issues
+   # Install Xcode command line tools
+   xcode-select --install
+   
+   # If using M1/M2 Mac, ensure you're using ARM-compatible Python
+   arch -arm64 python -m venv venv
+   ```
+
+   ```bash Windows Issues
+   # Install Microsoft C++ Build Tools
+   # Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+   
+   # Or use conda instead of pip:
+   conda create -n ragchat python=3.11
+   conda activate ragchat
+   pip install -r requirements.txt
+   ```
+
+   </CodeGroup>
+
+5. **Install dependencies individually** if batch installation fails:
+
+   ```bash
+   pip install streamlit
+   pip install langchain langchain-openai langchain-community langchain-chroma
+   pip install chromadb
+   pip install pypdf
+   pip install python-dotenv
+   ```
+
+### Verify Installation
+
+```python
+# verify_install.py
+import sys
+
+required_packages = [
+    'streamlit',
+    'langchain',
+    'langchain_openai',
+    'langchain_chroma',
+    'chromadb',
+    'pypdf',
+    'dotenv'
+]
+
+for package in required_packages:
+    try:
+        __import__(package)
+        print(f"✓ {package} installed")
+    except ImportError:
+        print(f"✗ {package} NOT installed")
+        sys.exit(1)
+
+print("\nAll dependencies installed successfully!")
+```
+
+</Accordion>
+
+<Accordion title="ChromaDB Persistence Issues">
+
+### Symptoms
+- Vector store not persisting between sessions
+- Error: `PersistentClient: path must be a directory`
+- Documents need to be re-uploaded every time
+- Database appears empty after restart
+
+### Solution Steps
+
+1. **Verify the `db` directory exists and has correct permissions:**
+
+   ```bash
+   # Check if directory exists
+   ls -ld db
+   
+   # Check contents
+   ls -la db/
+   
+   # Ensure proper permissions (Linux/Mac)
+   chmod 755 db
+   ```
+
+2. **Check the persistence configuration** in `app.py:14`:
+
+   ```python
+   persistant_directory = 'db'  # Note: typo in variable name
+   ```
+
+   This should be a relative or absolute path. If using a different location:
+
+   ```python
+   # Absolute path (recommended for production)
+   import os
+   persistant_directory = os.path.join(os.getcwd(), 'db')
+   
+   # Or specify custom location
+   persistant_directory = '/path/to/your/vector_db'
+   ```
+
+3. **Verify ChromaDB is actually persisting:**
+
+   ```python
+   # test_persistence.py
+   from langchain_chroma import Chroma
+   from langchain_openai import OpenAIEmbeddings
+   import os
+   
+   persist_dir = 'db'
+   
+   # Check what's in the database
+   if os.path.exists(persist_dir):
+       vector_store = Chroma(
+           persist_directory=persist_dir,
+           embedding_function=OpenAIEmbeddings()
+       )
+       
+       # Get collection info
+       collection = vector_store._collection
+       print(f"Documents in database: {collection.count()}")
+       
+       # Try a test query
+       results = vector_store.similarity_search("test", k=1)
+       print(f"Sample document: {results[0] if results else 'None'}")
+   else:
+       print(f"Directory {persist_dir} does not exist")
+   ```
+
+4. **Clear and rebuild the database** if corrupted:
+
+   ```bash
+   # Backup existing database
+   mv db db_backup_$(date +%Y%m%d)
+   
+   # Create fresh directory
+   mkdir db
+   
+   # Restart app and re-upload documents
+   streamlit run app.py
+   ```
+
+5. **Common ChromaDB version issues:**
+
+   The code uses ChromaDB 1.0.20 (from requirements.txt). If you encounter compatibility issues:
+
+   ```bash
+   # Install specific version
+   pip install chromadb==1.0.20
+   
+   # Or upgrade to latest
+   pip install --upgrade chromadb
+   ```
+
+<Warning>
+If you change ChromaDB versions, you may need to rebuild your vector database as the storage format may have changed.
+</Warning>
+
+### Database Location Issues
+
+If running from different directories:
+
+```python
+# app.py - line 14
+import os
+from pathlib import Path
+
+# Always use the same directory regardless of where script is run
+script_dir = Path(__file__).parent
+persistant_directory = script_dir / 'db'
+```
+
+</Accordion>
+
+<Accordion title="PDF Processing Errors">
+
+### Symptoms
+- Error: `PDFSyntaxError: No /Root object!`
+- Error: `PyPDF2.errors.PdfReadError`
+- Uploaded PDFs not being processed
+- Spinner stuck on "Carregando arquivos..."
+
+### Solution Steps
+
+1. **Verify PDF file integrity:**
+
+   ```bash
+   # Check if PDF is valid (Linux/Mac)
+   pdfinfo your_file.pdf
+   
+   # Or try opening in a PDF reader
+   # If corrupted, try to repair using:
+   # - https://www.pdf2go.com/repair-pdf
+   # - Adobe Acrobat's repair function
+   ```
+
+2. **Check PDF is not password-protected or encrypted:**
+
+   RAG Chat cannot process encrypted PDFs. Remove encryption first:
+
+   ```python
+   # decrypt_pdf.py
+   from PyPDF2 import PdfReader, PdfWriter
+   
+   reader = PdfReader("encrypted.pdf")
+   
+   if reader.is_encrypted:
+       reader.decrypt("your-password")
+   
+   writer = PdfWriter()
+   for page in reader.pages:
+       writer.add_page(page)
+   
+   with open("decrypted.pdf", "wb") as f:
+       writer.write(f)
+   ```
+
+3. **Handle PDFs with special formatting:**
+
+   Some PDFs (scanned images, complex layouts) may cause issues. Enhance error handling in `app.py:26-40`:
+
+   ```python
+   def process_file(file):
+       try:
+           with NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+               temp_file.write(file.read())
+               temp_file_path = temp_file.name
+               
+           loader = PyPDFLoader(temp_file_path)
+           docs = loader.load()
+           
+           if not docs:
+               st.error(f"No content extracted from {file.name}")
+               os.remove(temp_file_path)
+               return []
+           
+           text_splitter = RecursiveCharacterTextSplitter(
+               chunk_size=1000,
+               chunk_overlap=400
+           )
+           chunks = text_splitter.split_documents(docs)
+           os.remove(temp_file_path)
+           
+           return chunks
+           
+       except Exception as e:
+           st.error(f"Error processing {file.name}: {str(e)}")
+           if os.path.exists(temp_file_path):
+               os.remove(temp_file_path)
+           return []
+   ```
+
+4. **Alternative: Use OCR for scanned PDFs:**
+
+   ```bash
+   # Install OCR dependencies
+   pip install pytesseract pdf2image
+   
+   # Install system dependencies:
+   # Ubuntu/Debian:
+   sudo apt-get install tesseract-ocr poppler-utils
+   
+   # macOS:
+   brew install tesseract poppler
+   ```
+
+   Then modify the loader:
+
+   ```python
+   from langchain_community.document_loaders import PDFPlumberLoader
+   
+   # In process_file function:
+   loader = PDFPlumberLoader(temp_file_path)  # Better for complex PDFs
+   ```
+
+5. **Check file size limits:**
+
+   Streamlit has a default 200MB upload limit. Modify in `.streamlit/config.toml`:
+
+   ```toml
+   [server]
+   maxUploadSize = 500
+   ```
+
+### Test PDF Processing
+
+```python
+# test_pdf.py
+from langchain_community.document_loaders import PyPDFLoader
+
+def test_pdf(file_path):
+    try:
+        loader = PyPDFLoader(file_path)
+        docs = loader.load()
+        print(f"✓ Successfully loaded {len(docs)} pages")
+        print(f"First page preview: {docs[0].page_content[:200]}...")
+        return True
+    except Exception as e:
+        print(f"✗ Error: {str(e)}")
+        return False
+
+test_pdf("your_file.pdf")
+```
+
+</Accordion>
+
+<Accordion title="Memory and Performance Issues">
+
+### Symptoms
+- Application running slowly
+- High memory usage
+- Browser becoming unresponsive
+- Streamlit connection errors
+
+### Solution Steps
+
+1. **Limit conversation history** to reduce memory usage:
+
+   ```python
+   # Add after storing messages in app.py
+   MAX_MESSAGES = 20  # Keep last 10 exchanges
+   
+   if len(st.session_state.messages) > MAX_MESSAGES:
+       st.session_state.messages = st.session_state.messages[-MAX_MESSAGES:]
+   ```
+
+2. **Optimize chunk retrieval:**
+
+   ```python
+   # app.py - line 57 (in ask_question function)
+   retriever = vector_store.as_retriever(
+       search_kwargs={
+           "k": 3  # Reduce from default 4 to 3 chunks
+       }
+   )
+   ```
+
+3. **Clear Streamlit cache:**
+
+   ```bash
+   # Stop the application and clear cache
+   rm -rf ~/.streamlit/cache
+   
+   # Or clear from within the app by adding:
+   st.cache_data.clear()
+   ```
+
+4. **Reduce chunk size for large documents:**
+
+   ```python
+   # app.py - line 33
+   text_splitter = RecursiveCharacterTextSplitter(
+       chunk_size=500,      # Reduced from 1000
+       chunk_overlap=100    # Reduced from 400
+   )
+   ```
+
+5. **Monitor resource usage:**
+
+   ```bash
+   # Linux/Mac - monitor in real-time
+   top -p $(pgrep -f streamlit)
+   
+   # Or use htop for better visualization
+   htop -p $(pgrep -f streamlit)
+   ```
+
+<Note>
+For production deployments, consider using a proper ASGI server and load balancer instead of the development Streamlit server.
+</Note>
+
+</Accordion>
+
+<Accordion title="No Response from AI or Empty Responses">
+
+### Symptoms
+- Question submitted but no response appears
+- AI returns empty or very short responses
+- Error: `No information available in context`
+
+### Solution Steps
+
+1. **Verify documents are actually loaded:**
+
+   Add a debug statement in the sidebar:
+
+   ```python
+   # app.py - add after line 126
+   if all_chunks:
+       vector_store = add_to_vector_store(
+           vector_store=vector_store,
+           documents=all_chunks
+       )
+       st.sidebar.success(f"Loaded {len(all_chunks)} chunks from {len(uploaded_files)} files")
+   ```
+
+2. **Check if retrieval is finding relevant documents:**
+
+   ```python
+   # Debug retrieval in ask_question function
+   def ask_question(model, query, vector_store):
+       llm = ChatOpenAI(model=model)
+       retriever = vector_store.as_retriever()
+       
+       # Add debug
+       docs = retriever.get_relevant_documents(query)
+       st.sidebar.write(f"Found {len(docs)} relevant chunks")
+       
+       # Continue with existing logic...
+   ```
+
+3. **Verify the query condition** in `app.py:134`:
+
+   ```python
+   if vector_store and question:
+       # Process query
+   else:
+       if not vector_store:
+           st.warning("Please upload PDF documents first")
+       if not question:
+           st.info("Type a question to begin")
+   ```
+
+4. **Check for API rate limits:**
+
+   If you're hitting OpenAI rate limits, you'll see errors. Add error handling:
+
+   ```python
+   # Wrap the ask_question call
+   try:
+       response = ask_question(
+           model=selected_model,
+           query=question,
+           vector_store=vector_store
+       )
+       st.chat_message('ai').write(response)
+   except Exception as e:
+       st.error(f"Error generating response: {str(e)}")
+       if "rate_limit" in str(e).lower():
+           st.info("Rate limit reached. Please wait a moment and try again.")
+   ```
+
+5. **Improve retrieval with better embeddings:**
+
+   ```python
+   # Use different embedding model if needed
+   from langchain_openai import OpenAIEmbeddings
+   
+   embeddings = OpenAIEmbeddings(
+       model="text-embedding-3-large"  # More accurate, but more expensive
+   )
+   
+   vector_store = Chroma(
+       persist_directory=persistant_directory,
+       embedding_function=embeddings
+   )
+   ```
+
+</Accordion>
+
+## Getting Help
+
+If you continue to experience issues:
+
+1. **Check the logs:**
+   ```bash
+   streamlit run app.py --logger.level=debug
+   ```
+
+2. **Enable verbose error messages:**
+   ```python
+   # Add to top of app.py
+   import streamlit as st
+   st.set_option('client.showErrorDetails', True)
+   ```
+
+3. **Report issues** with:
+   - Python version (`python --version`)
+   - Operating system
+   - Full error traceback
+   - Steps to reproduce
+
+4. **Common log files:**
+   - Streamlit logs: `~/.streamlit/logs/`
+   - Application errors: Check terminal output
+
+<Warning>
+Never share your OpenAI API key when reporting issues. Replace it with `sk-xxx...` in logs.
+</Warning>
